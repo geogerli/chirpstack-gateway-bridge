@@ -3,8 +3,8 @@ package structs
 import (
 	"testing"
 
-	"github.com/brocaar/loraserver/api/common"
-	"github.com/brocaar/loraserver/api/gw"
+	"github.com/brocaar/chirpstack-api/go/v3/common"
+	"github.com/brocaar/chirpstack-api/go/v3/gw"
 	"github.com/brocaar/lorawan"
 	"github.com/brocaar/lorawan/band"
 	"github.com/stretchr/testify/require"
@@ -59,6 +59,7 @@ func TestUplinkDataFrameToProto(t *testing.T) {
 					Rssi:      120,
 					LoraSnr:   5.5,
 					Context:   []byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02},
+					CrcStatus: gw.CRCStatus_CRC_OK,
 				},
 			},
 		},
@@ -102,6 +103,7 @@ func TestUplinkDataFrameToProto(t *testing.T) {
 					Rssi:      120,
 					LoraSnr:   5.5,
 					Context:   []byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02},
+					CrcStatus: gw.CRCStatus_CRC_OK,
 				},
 			},
 		},
@@ -146,6 +148,7 @@ func TestUplinkDataFrameToProto(t *testing.T) {
 					Rssi:      120,
 					LoraSnr:   5.5,
 					Context:   []byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02},
+					CrcStatus: gw.CRCStatus_CRC_OK,
 				},
 			},
 		},

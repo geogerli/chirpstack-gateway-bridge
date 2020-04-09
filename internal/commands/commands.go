@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io/ioutil"
+	"os"
 	"os/exec"
 	"sync"
 	"time"
@@ -12,9 +13,9 @@ import (
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 
-	"github.com/brocaar/lora-gateway-bridge/internal/config"
-	"github.com/brocaar/lora-gateway-bridge/internal/integration"
-	"github.com/brocaar/loraserver/api/gw"
+	"github.com/brocaar/chirpstack-api/go/v3/gw"
+	"github.com/brocaar/chirpstack-gateway-bridge/internal/config"
+	"github.com/brocaar/chirpstack-gateway-bridge/internal/integration"
 	"github.com/brocaar/lorawan"
 )
 
@@ -112,6 +113,11 @@ func execute(command string, stdin []byte, environment map[string]string) ([]byt
 	defer cancel()
 
 	cmdCtx := exec.CommandContext(ctx, cmdArgs[0], cmdArgs[1:]...)
+
+	// The default is that when cmdCtx.Env is nil, os.Environ() are being used
+	// automatically. As we want to add additional env. variables, we want to
+	// extend this list, thus first need to set them to os.Environ()
+	cmdCtx.Env = os.Environ()
 	for k, v := range environment {
 		cmdCtx.Env = append(cmdCtx.Env, fmt.Sprintf("%s=%s", k, v))
 	}
@@ -152,6 +158,7 @@ func execute(command string, stdin []byte, environment map[string]string) ([]byt
 	return stdoutB, stderrB, nil
 }
 
+// ParseCommandLine parses the given command to commands and arguments.
 // source: https://stackoverflow.com/questions/34118732/parse-a-command-line-string-into-flags-and-arguments-in-golang
 func ParseCommandLine(command string) ([]string, error) {
 	var args []string

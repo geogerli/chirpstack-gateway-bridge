@@ -5,11 +5,12 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/brocaar/lora-gateway-bridge/internal/backend/basicstation"
-	"github.com/brocaar/lora-gateway-bridge/internal/backend/semtechudp"
-	"github.com/brocaar/lora-gateway-bridge/internal/config"
-	"github.com/brocaar/loraserver/api/gw"
-	"github.com/brocaar/lorawan"
+	"github.com/brocaar/chirpstack-api/go/v3/gw"
+	"github.com/brocaar/chirpstack-gateway-bridge/internal/backend/basicstation"
+	"github.com/brocaar/chirpstack-gateway-bridge/internal/backend/concentratord"
+	"github.com/brocaar/chirpstack-gateway-bridge/internal/backend/events"
+	"github.com/brocaar/chirpstack-gateway-bridge/internal/backend/semtechudp"
+	"github.com/brocaar/chirpstack-gateway-bridge/internal/config"
 )
 
 var backend Backend
@@ -23,6 +24,8 @@ func Setup(conf config.Config) error {
 		backend, err = semtechudp.NewBackend(conf)
 	case "basic_station":
 		backend, err = basicstation.NewBackend(conf)
+	case "concentratord":
+		backend, err = concentratord.NewBackend(conf)
 	default:
 		return fmt.Errorf("unknown backend type: %s", conf.Backend.Type)
 	}
@@ -53,15 +56,18 @@ type Backend interface {
 	// GetUplinkFrameChan returns the channel for received uplinks.
 	GetUplinkFrameChan() chan gw.UplinkFrame
 
-	// GetConnectChan returns the channel for received gateway connections.
-	GetConnectChan() chan lorawan.EUI64
+	// GetRawPacketForwarderEventChan returns the raw packet-forwarder command channel.
+	GetRawPacketForwarderEventChan() chan gw.RawPacketForwarderEvent
 
-	// GetDisconnectChan returns the channel for disconnected gateway connections.
-	GetDisconnectChan() chan lorawan.EUI64
+	// GetSubscribeEventChan returns the channel for the (un)subscribe events.
+	GetSubscribeEventChan() chan events.Subscribe
 
 	// SendDownlinkFrame sends the given downlink frame.
 	SendDownlinkFrame(gw.DownlinkFrame) error
 
 	// ApplyConfiguration applies the given configuration to the gateway.
 	ApplyConfiguration(gw.GatewayConfiguration) error
+
+	// RawPacketForwarderCommand sends the given raw command to the packet-forwarder.
+	RawPacketForwarderCommand(gw.RawPacketForwarderCommand) error
 }

@@ -4,8 +4,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/brocaar/loraserver/api/common"
-	"github.com/brocaar/loraserver/api/gw"
+	"github.com/brocaar/chirpstack-api/go/v3/common"
+	"github.com/brocaar/chirpstack-api/go/v3/gw"
 	"github.com/brocaar/lorawan"
 	"github.com/brocaar/lorawan/band"
 	"github.com/golang/protobuf/ptypes"
@@ -79,7 +79,7 @@ func TestDownlinkFrameFromProto(t *testing.T) {
 					Modulation: common.Modulation_FSK,
 					ModulationInfo: &gw.DownlinkTXInfo_FskModulationInfo{
 						FskModulationInfo: &gw.FSKModulationInfo{
-							Bitrate: 50000,
+							Datarate: 50000,
 						},
 					},
 					Timing: gw.DownlinkTiming_DELAY,

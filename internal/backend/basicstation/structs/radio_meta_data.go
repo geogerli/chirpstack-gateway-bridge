@@ -4,8 +4,8 @@ import (
 	"encoding/binary"
 	"time"
 
-	"github.com/brocaar/loraserver/api/common"
-	"github.com/brocaar/loraserver/api/gw"
+	"github.com/brocaar/chirpstack-api/go/v3/common"
+	"github.com/brocaar/chirpstack-api/go/v3/gw"
 	"github.com/brocaar/lorawan"
 	"github.com/brocaar/lorawan/band"
 	"github.com/brocaar/lorawan/gps"
@@ -29,6 +29,7 @@ type RadioMetaDataUpInfo struct {
 	SNR     float32 `json:"snr"`
 }
 
+// SetRadioMetaDataToProto sets the given parameters to the given protobuf struct.
 func SetRadioMetaDataToProto(loraBand band.Band, gatewayID lorawan.EUI64, rmd RadioMetaData, pb *gw.UplinkFrame) error {
 	//
 	// TxInfo
@@ -57,8 +58,7 @@ func SetRadioMetaDataToProto(loraBand band.Band, gatewayID lorawan.EUI64, rmd Ra
 		pb.TxInfo.Modulation = common.Modulation_FSK
 		pb.TxInfo.ModulationInfo = &gw.UplinkTXInfo_FskModulationInfo{
 			FskModulationInfo: &gw.FSKModulationInfo{
-				Bandwidth: uint32(dr.Bandwidth),
-				Bitrate:   uint32(dr.BitRate),
+				Datarate: uint32(dr.BitRate),
 			},
 		}
 	}
@@ -70,6 +70,7 @@ func SetRadioMetaDataToProto(loraBand band.Band, gatewayID lorawan.EUI64, rmd Ra
 		GatewayId: gatewayID[:],
 		Rssi:      int32(rmd.UpInfo.RSSI),
 		LoraSnr:   float64(rmd.UpInfo.SNR),
+		CrcStatus: gw.CRCStatus_CRC_OK,
 	}
 
 	if gpsTime := rmd.UpInfo.GPSTime; gpsTime != 0 {

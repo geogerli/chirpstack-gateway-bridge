@@ -7,8 +7,8 @@ import (
 	"github.com/golang/protobuf/ptypes"
 	"github.com/stretchr/testify/require"
 
-	"github.com/brocaar/loraserver/api/common"
-	"github.com/brocaar/loraserver/api/gw"
+	"github.com/brocaar/chirpstack-api/go/v3/common"
+	"github.com/brocaar/chirpstack-api/go/v3/gw"
 	"github.com/brocaar/lorawan"
 	"github.com/brocaar/lorawan/band"
 	"github.com/brocaar/lorawan/gps"
@@ -55,6 +55,7 @@ func TestSetRadioMetaDataToProto(t *testing.T) {
 					Rssi:      120,
 					LoraSnr:   5.5,
 					Context:   []byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02},
+					CrcStatus: gw.CRCStatus_CRC_OK,
 				},
 			},
 		},
@@ -75,7 +76,7 @@ func TestSetRadioMetaDataToProto(t *testing.T) {
 					Modulation: common.Modulation_FSK,
 					ModulationInfo: &gw.UplinkTXInfo_FskModulationInfo{
 						FskModulationInfo: &gw.FSKModulationInfo{
-							Bitrate: 50000,
+							Datarate: 50000,
 						},
 					},
 				},
@@ -83,6 +84,7 @@ func TestSetRadioMetaDataToProto(t *testing.T) {
 					GatewayId: []byte{0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08},
 					Rssi:      120,
 					Context:   []byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02},
+					CrcStatus: gw.CRCStatus_CRC_OK,
 				},
 			},
 		},
@@ -118,6 +120,7 @@ func TestSetRadioMetaDataToProto(t *testing.T) {
 					Context:           []byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02},
 					TimeSinceGpsEpoch: ptypes.DurationProto(5 * time.Second),
 					Time:              timeP,
+					CrcStatus:         gw.CRCStatus_CRC_OK,
 				},
 			},
 		},

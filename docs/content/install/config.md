@@ -4,50 +4,50 @@ menu:
     main:
         parent: install
         weight: 5
-description: Instructions and examples how to configure the LoRa Gateway Bridge service.
+description: Instructions and examples how to configure the ChirpStack Gateway Bridge service.
 ---
 
 # Configuration
 
-The `lora-gateway-bridge` has the following command-line flags:
+The `chirpstack-gateway-bridge` has the following command-line flags:
 
 {{<highlight text>}}
-LoRa Gateway Bridge abstracts the packet_forwarder protocol into JSON over MQTT
-        > documentation & support: https://docs.loraserver.io/lora-gateway-bridge
-        > source & copyright information: https://github.com/brocaar/lora-gateway-bridge
+ChirpStack Gateway Bridge abstracts the packet_forwarder protocol into Protobuf or JSON over MQTT
+        > documentation & support: https://www.chirpstack.io/gateway-bridge/
+        > source & copyright information: https://github.com/brocaar/chirpstack-gateway-bridge
 
 Usage:
-  lora-gateway-bridge [flags]
-  lora-gateway-bridge [command]
+  chirpstack-gateway-bridge [flags]
+  chirpstack-gateway-bridge [command]
 
 Available Commands:
-  configfile  Print the LoRa Gateway configuration file
+  configfile  Print the ChirpStack Gateway Bridge configuration file
   help        Help about any command
-  version     Print the LoRa Gateway Bridge version
+  version     Print the ChirpStack Gateway Bridge version
 
 Flags:
   -c, --config string   path to configuration file (optional)
-  -h, --help            help for lora-gateway-bridge
+  -h, --help            help for chirpstack-gateway-bridge
       --log-level int   debug=5, info=4, error=2, fatal=1, panic=0 (default 4)
 
-Use "lora-gateway-bridge [command] --help" for more information about a command.
+Use "chirpstack-gateway-bridge [command] --help" for more information about a command.
 {{< /highlight >}}
 
 ## Configuration file
 
-By default `lora-gateway-bridge` will look in the following order for a
+By default `chirpstack-gateway-bridge` will look in the following order for a
 configuration at the following paths when `--config` / `-c` is not set:
 
-* `lora-gateway-bridge.toml` (current working directory)
-* `$HOME/.config/lora-gateway-bridge/lora-gateway-bridge.toml`
-* `/etc/lora-gateway-bridge/lora-gateway-bridge.toml`
+* `chirpstack-gateway-bridge.toml` (current working directory)
+* `$HOME/.config/chirpstack-gateway-bridge/chirpstack-gateway-bridge.toml`
+* `/etc/chirpstack-gateway-bridge/chirpstack-gateway-bridge.toml`
 
 To load configuration from a different location, use the `--config` flag.
 
-To generate a new configuration file `lora-gateway-bridge.toml`, execute the following command:
+To generate a new configuration file `chirpstack-gateway-bridge.toml`, execute the following command:
 
 {{<highlight bash>}}
-lora-gateway-bridge configfile > lora-gateway-bridge.toml
+chirpstack-gateway-bridge configfile > chirpstack-gateway-bridge.toml
 {{< /highlight >}}
 
 Note that this configuration file will be pre-filled with the current configuration
@@ -56,7 +56,7 @@ This makes it possible when new fields get added to upgrade your configuration f
 while preserving your old configuration. Example:
 
 {{<highlight bash>}}
-lora-gateway-bridge configfile --config lora-gateway-bridge-old.toml > lora-gateway-bridge-new.toml
+chirpstack-gateway-bridge configfile --config chirpstack-gateway-bridge-old.toml > chirpstack-gateway-bridge-new.toml
 {{< /highlight >}}
 
 Example configuration file:
@@ -64,14 +64,19 @@ Example configuration file:
 {{<highlight toml>}}
 [general]
 # debug=5, info=4, warning=3, error=2, fatal=1, panic=0
-log_level = 4
+log_level=4
+
+# Log to syslog.
+#
+# When set to true, log messages are being written to syslog.
+log_to_syslog=false
 
 
 # Filters.
 #
 # These can be used to filter LoRaWAN frames to reduce bandwith usage between
-# the gateway and LoRa Gateway Bride. Depending the used backend, filtering
-# will be performed by the Packet Forwarder or LoRa Gateway Bridge.
+# the gateway and ChirpStack Gateway Bridge. Depending the used backend, filtering
+# will be performed by the Packet Forwarder or ChirpStack Gateway Bridge.
 [filters]
 
 # NetIDs filters.
@@ -108,6 +113,7 @@ join_euis=[
 #
 # Valid options are:
 #   * semtech_udp
+#   * concentratord
 #   * basic_station
 type="semtech_udp"
 
@@ -137,6 +143,19 @@ type="semtech_udp"
 
 
 
+  # ChirpStack Concentratord backend.
+  [backend.concentratord]
+
+  # Check for CRC OK.
+  crc_check=true
+
+  # Event API URL.
+  event_url="ipc:///tmp/concentratord_event"
+
+  # Command API URL.
+  command_url="ipc:///tmp/concentratord_command"
+
+
   # Basic Station backend.
   [backend.basic_station]
 
@@ -146,13 +165,13 @@ type="semtech_udp"
   # TLS certificate and key files.
   #
   # When set, the websocket listener will use TLS to secure the connections
-  # between the gateways and LoRa Gateway Bridge (optional).
+  # between the gateways and ChirpStack Gateway Bridge (optional).
   tls_cert=""
   tls_key=""
 
   # TLS CA certificate.
   #
-  # When configured, LoRa Gateway Bridge will validate that the client
+  # When configured, ChirpStack Gateway Bridge will validate that the client
   # certificate of the gateway has been signed by this CA certificate.
   ca_cert=""
 
@@ -224,7 +243,7 @@ type="semtech_udp"
 # Payload marshaler.
 #
 # This defines how the MQTT payloads are encoded. Valid options are:
-# * protobuf:  Protobuf encoding (this will become the LoRa Gateway Bridge v3 default)
+# * protobuf:  Protobuf encoding
 # * json:      JSON encoding (easier for debugging, but less compact than 'protobuf')
 marshaler="protobuf"
 
@@ -238,7 +257,13 @@ marshaler="protobuf"
 
   # Maximum interval that will be waited between reconnection attempts when connection is lost.
   # Valid units are 'ms', 's', 'm', 'h'. Note that these values can be combined, e.g. '24h30m15s'.
-  max_reconnect_interval="10m0s"
+  max_reconnect_interval="1m0s"
+
+  # Terminate on connect error.
+  #
+  # When set to true, instead of re-trying to connect, the ChirpStack Gateway Bridge
+  # process will be terminated on a connection error.
+  terminate_on_connect_error=false
 
 
   # MQTT authentication.
@@ -250,8 +275,13 @@ marshaler="protobuf"
 
     # Generic MQTT authentication.
     [integration.mqtt.auth.generic]
-    # MQTT server (e.g. scheme://host:port where scheme is tcp, ssl or ws)
-    server="tcp://127.0.0.1:1883"
+    # MQTT servers.
+    #
+    # Configure one or multiple MQTT server to connect to. Each item must be in
+    # the following format: scheme://host:port where scheme is tcp, ssl or ws.
+    servers=[
+      "tcp://127.0.0.1:1883",
+    ]
 
     # Connect with the given username (optional)
     username=""
@@ -346,7 +376,7 @@ marshaler="protobuf"
 
     # Token expiration (symmetric key authentication).
     #
-    # LoRa Gateway Bridge will generate a SAS token with the given expiration.
+    # ChirpStack Gateway Bridge will generate a SAS token with the given expiration.
     # After the token has expired, it will generate a new one and trigger a
     # re-connect (only for symmetric key authentication).
     sas_token_expiration="24h0m0s"
@@ -377,7 +407,7 @@ marshaler="protobuf"
 
   # Metrics stored in Prometheus.
   #
-  # These metrics expose information about the state of the LoRa Gateway Bridge
+  # These metrics expose information about the state of the ChirpStack Gateway Bridge
   # instance like number of messages processed, number of function calls, etc.
   [metrics.prometheus]
   # Expose Prometheus metrics endpoint.
@@ -390,7 +420,7 @@ marshaler="protobuf"
 
 # Gateway meta-data.
 #
-# The meta-data will be added to every stats message sent by the LoRa Gateway
+# The meta-data will be added to every stats message sent by the ChirpStack Gateway
 # Bridge.
 [meta_data]
 
@@ -416,6 +446,15 @@ marshaler="protobuf"
   # Max. execution duration.
   max_execution_duration="1s"
 
+  # Split delimiter.
+  #
+  # When the output of a command returns multiple lines, ChirpStack Gateway Bridge
+  # assumes multiple values are returned. In this case it will split by the given delimiter
+  # to obtain the key / value of each row. The key will be prefixed with the name of the
+  # configured command.
+  split_delimiter="="
+
+
   # Commands to execute.
   #
   # The value of the stdout will be used as the key value (string).
@@ -430,7 +469,7 @@ marshaler="protobuf"
 # Executable commands.
 #
 # The configured commands can be triggered by sending a message to the
-# LoRa Gateway Bridge.
+# ChirpStack Gateway Bridge.
 [commands]
   # Example:
   # [commands.commands.reboot]

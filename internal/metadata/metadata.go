@@ -11,8 +11,8 @@ import (
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 
-	"github.com/brocaar/lora-gateway-bridge/internal/commands"
-	"github.com/brocaar/lora-gateway-bridge/internal/config"
+	"github.com/brocaar/chirpstack-gateway-bridge/internal/commands"
+	"github.com/brocaar/chirpstack-gateway-bridge/internal/config"
 )
 
 var (
@@ -22,8 +22,9 @@ var (
 	cmnds  map[string]string
 	cached map[string]string
 
-	interval     time.Duration
-	maxExecution time.Duration
+	interval       time.Duration
+	maxExecution   time.Duration
+	splitDelimiter string
 )
 
 // Setup configures the metadata package.
@@ -36,6 +37,7 @@ func Setup(conf config.Config) error {
 
 	interval = conf.MetaData.Dynamic.ExecutionInterval
 	maxExecution = conf.MetaData.Dynamic.MaxExecutionDuration
+	splitDelimiter = conf.MetaData.Dynamic.SplitDelimiter
 
 	go func() {
 		for {
@@ -71,7 +73,23 @@ func runCommands() {
 			continue
 		}
 
-		newKV[k] = out
+		if strings.Contains(out, "\n") {
+			rows := strings.Split(out, "\n")
+			for _, row := range rows {
+				kv := strings.SplitN(row, splitDelimiter, 2)
+				if len(kv) != 2 {
+					log.WithFields(log.Fields{
+						"row":             row,
+						"split_delimiter": splitDelimiter,
+					}).Warning("metadata: can not split output in key / value")
+				} else {
+					newKV[k+"_"+kv[0]] = kv[1]
+				}
+			}
+
+		} else {
+			newKV[k] = out
+		}
 	}
 
 	mux.Lock()

@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/brocaar/loraserver/api/gw"
+	"github.com/brocaar/chirpstack-api/go/v3/gw"
 	"github.com/gofrs/uuid"
 
 	paho "github.com/eclipse/paho.mqtt.golang"
@@ -13,7 +13,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 
-	"github.com/brocaar/lora-gateway-bridge/internal/config"
+	"github.com/brocaar/chirpstack-gateway-bridge/internal/config"
 	"github.com/brocaar/lorawan"
 )
 
@@ -57,7 +57,7 @@ func (ts *MQTTBackendTestSuite) SetupSuite() {
 	conf.Integration.MQTT.EventTopicTemplate = "gateway/{{ .GatewayID }}/event/{{ .EventType }}"
 	conf.Integration.MQTT.CommandTopicTemplate = "gateway/{{ .GatewayID }}/command/#"
 	conf.Integration.MQTT.Auth.Type = "generic"
-	conf.Integration.MQTT.Auth.Generic.Server = server
+	conf.Integration.MQTT.Auth.Generic.Servers = []string{server}
 	conf.Integration.MQTT.Auth.Generic.Username = username
 	conf.Integration.MQTT.Auth.Generic.Password = password
 	conf.Integration.MQTT.Auth.Generic.CleanSession = true
@@ -65,7 +65,7 @@ func (ts *MQTTBackendTestSuite) SetupSuite() {
 	var err error
 	ts.backend, err = NewBackend(conf)
 	assert.NoError(err)
-	assert.NoError(ts.backend.SubscribeGateway(ts.gatewayID))
+	assert.NoError(ts.backend.SetGatewaySubscription(true, ts.gatewayID))
 	time.Sleep(100 * time.Millisecond)
 }
 
@@ -79,14 +79,14 @@ func (ts *MQTTBackendTestSuite) TestSubscribeGateway() {
 
 	gatewayID := lorawan.EUI64{1, 2, 3, 4, 5, 6, 7, 8}
 
-	assert.NoError(ts.backend.SubscribeGateway(gatewayID))
+	assert.NoError(ts.backend.SetGatewaySubscription(true, gatewayID))
 	_, ok := ts.backend.gateways[gatewayID]
 	assert.True(ok)
 
 	ts.T().Run("Unsubscribe", func(t *testing.T) {
 		assert := require.New(t)
 
-		assert.NoError(ts.backend.UnsubscribeGateway(gatewayID))
+		assert.NoError(ts.backend.SetGatewaySubscription(false, gatewayID))
 		_, ok := ts.backend.gateways[gatewayID]
 		assert.False(ok)
 	})
@@ -228,6 +228,28 @@ func (ts *MQTTBackendTestSuite) TestGatewayCommandExecRequest() {
 
 	receivedExecReq := <-ts.backend.GetGatewayCommandExecRequestChan()
 	assert.Equal(execReq, receivedExecReq)
+}
+
+func (ts *MQTTBackendTestSuite) TestRawPacketForwarderCommand() {
+	assert := require.New(ts.T())
+	id, err := uuid.NewV4()
+	assert.NoError(err)
+
+	pl := gw.RawPacketForwarderCommand{
+		GatewayId: ts.gatewayID[:],
+		RawId:     id[:],
+		Payload:   []byte{0x01, 0x02, 0x03, 0x04},
+	}
+
+	b, err := ts.backend.marshal(&pl)
+	assert.NoError(err)
+
+	token := ts.mqttClient.Publish("gateway/0807060504030201/command/raw", 0, false, b)
+	token.Wait()
+	assert.NoError(token.Error())
+
+	received := <-ts.backend.GetRawPacketForwarderChan()
+	assert.Equal(pl, received)
 }
 
 func TestMQTTBackend(t *testing.T) {

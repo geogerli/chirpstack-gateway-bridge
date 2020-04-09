@@ -7,12 +7,12 @@ import (
 	mqtt "github.com/eclipse/paho.mqtt.golang"
 	"github.com/pkg/errors"
 
-	"github.com/brocaar/lora-gateway-bridge/internal/config"
+	"github.com/brocaar/chirpstack-gateway-bridge/internal/config"
 )
 
 // GenericAuthentication implements a generic MQTT authentication.
 type GenericAuthentication struct {
-	server       string
+	servers      []string
 	username     string
 	password     string
 	cleanSession bool
@@ -33,9 +33,8 @@ func NewGenericAuthentication(conf config.Config) (Authentication, error) {
 	}
 
 	return &GenericAuthentication{
-		tlsConfig: tlsConfig,
-
-		server:       conf.Integration.MQTT.Auth.Generic.Server,
+		tlsConfig:    tlsConfig,
+		servers:      conf.Integration.MQTT.Auth.Generic.Servers,
 		username:     conf.Integration.MQTT.Auth.Generic.Username,
 		password:     conf.Integration.MQTT.Auth.Generic.Password,
 		cleanSession: conf.Integration.MQTT.Auth.Generic.CleanSession,
@@ -45,7 +44,9 @@ func NewGenericAuthentication(conf config.Config) (Authentication, error) {
 
 // Init applies the initial configuration.
 func (a *GenericAuthentication) Init(opts *mqtt.ClientOptions) error {
-	opts.AddBroker(a.server)
+	for _, server := range a.servers {
+		opts.AddBroker(server)
+	}
 	opts.SetUsername(a.username)
 	opts.SetPassword(a.password)
 	opts.SetCleanSession(a.cleanSession)

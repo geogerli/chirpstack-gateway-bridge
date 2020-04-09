@@ -9,12 +9,12 @@ import (
 	"github.com/golang/protobuf/ptypes"
 	"github.com/pkg/errors"
 
-	"github.com/brocaar/loraserver/api/common"
-	"github.com/brocaar/loraserver/api/gw"
+	"github.com/brocaar/chirpstack-api/go/v3/common"
+	"github.com/brocaar/chirpstack-api/go/v3/gw"
 	"github.com/brocaar/lorawan/band"
 )
 
-// DownlinkMessage implements the downlink message.
+// DownlinkFrame implements the downlink message.
 type DownlinkFrame struct {
 	MessageType MessageType `json:"msgtype"`
 
@@ -86,8 +86,7 @@ func DownlinkFrameFromProto(loraBand band.Band, pb gw.DownlinkFrame) (DownlinkFr
 		}
 		dr, err = loraBand.GetDataRateIndex(false, band.DataRate{
 			Modulation: band.FSKModulation,
-			Bandwidth:  int(modInfo.Bandwidth),
-			BitRate:    int(modInfo.Bitrate),
+			BitRate:    int(modInfo.Datarate),
 		})
 		if err != nil {
 			return out, errors.Wrap(err, "get data-rate index error")

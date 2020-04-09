@@ -17,10 +17,10 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 
-	"github.com/brocaar/lora-gateway-bridge/internal/backend/semtechudp/packets"
-	"github.com/brocaar/lora-gateway-bridge/internal/config"
-	"github.com/brocaar/loraserver/api/common"
-	"github.com/brocaar/loraserver/api/gw"
+	"github.com/brocaar/chirpstack-api/go/v3/common"
+	"github.com/brocaar/chirpstack-api/go/v3/gw"
+	"github.com/brocaar/chirpstack-gateway-bridge/internal/backend/semtechudp/packets"
+	"github.com/brocaar/chirpstack-gateway-bridge/internal/config"
 	"github.com/brocaar/lorawan"
 )
 
@@ -75,13 +75,7 @@ func (ts *BackendTestSuite) SetupTest() {
 
 	go func() {
 		for {
-			<-ts.backend.GetConnectChan()
-		}
-	}()
-
-	go func() {
-		for {
-			<-ts.backend.GetDisconnectChan()
+			<-ts.backend.GetSubscribeEventChan()
 		}
 	}()
 }
@@ -325,11 +319,12 @@ func (ts *BackendTestSuite) TestPushData() {
 						TimeSinceGpsEpoch: &duration.Duration{
 							Seconds: 1,
 						},
-						Rssi:    -51,
-						LoraSnr: 7,
-						Channel: 2,
-						RfChain: 1,
-						Context: []byte{0x2a, 0x33, 0x7a, 0xb3},
+						Rssi:      -51,
+						LoraSnr:   7,
+						Channel:   2,
+						RfChain:   1,
+						Context:   []byte{0x2a, 0x33, 0x7a, 0xb3},
+						CrcStatus: gw.CRCStatus_CRC_OK,
 					},
 				},
 			},
@@ -467,7 +462,8 @@ func (ts *BackendTestSuite) TestSendDownlinkFrame() {
 					Modulation: common.Modulation_FSK,
 					ModulationInfo: &gw.DownlinkTXInfo_FskModulationInfo{
 						FskModulationInfo: &gw.FSKModulationInfo{
-							Bitrate: 50000,
+							Datarate:           50000,
+							FrequencyDeviation: 25000,
 						},
 					},
 					Board:   1,

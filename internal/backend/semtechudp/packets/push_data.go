@@ -11,8 +11,8 @@ import (
 	"github.com/golang/protobuf/ptypes"
 	"github.com/pkg/errors"
 
-	"github.com/brocaar/loraserver/api/common"
-	"github.com/brocaar/loraserver/api/gw"
+	"github.com/brocaar/chirpstack-api/go/v3/common"
+	"github.com/brocaar/chirpstack-api/go/v3/gw"
 	"github.com/brocaar/lorawan"
 )
 
@@ -169,6 +169,15 @@ func getUplinkFrame(gatewayID []byte, rxpk RXPK, FakeRxInfoTime bool) (gw.Uplink
 		},
 	}
 
+	switch rxpk.Stat {
+	case 1:
+		frame.RxInfo.CrcStatus = gw.CRCStatus_CRC_OK
+	case -1:
+		frame.RxInfo.CrcStatus = gw.CRCStatus_BAD_CRC
+	default:
+		frame.RxInfo.CrcStatus = gw.CRCStatus_NO_CRC
+	}
+
 	// Context
 	binary.BigEndian.PutUint32(frame.RxInfo.Context, rxpk.Tmst)
 
@@ -226,7 +235,7 @@ func getUplinkFrame(gatewayID []byte, rxpk RXPK, FakeRxInfoTime bool) (gw.Uplink
 
 		frame.TxInfo.ModulationInfo = &gw.UplinkTXInfo_FskModulationInfo{
 			FskModulationInfo: &gw.FSKModulationInfo{
-				Bitrate: uint32(rxpk.DatR.FSK),
+				Datarate: uint32(rxpk.DatR.FSK),
 			},
 		}
 	}

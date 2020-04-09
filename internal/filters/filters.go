@@ -6,13 +6,14 @@ import (
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 
-	"github.com/brocaar/lora-gateway-bridge/internal/config"
+	"github.com/brocaar/chirpstack-gateway-bridge/internal/config"
 	"github.com/brocaar/lorawan"
 )
 
 var netIDs []lorawan.NetID
 var joinEUIs [][2]lorawan.EUI64
 
+// Setup configures the filters package.
 func Setup(conf config.Config) error {
 	for _, netIDStr := range conf.Filters.NetIDs {
 		var netID lorawan.NetID

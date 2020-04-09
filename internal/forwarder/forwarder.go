@@ -5,16 +5,17 @@ import (
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 
-	"github.com/brocaar/lora-gateway-bridge/internal/backend"
-	"github.com/brocaar/lora-gateway-bridge/internal/config"
-	"github.com/brocaar/lora-gateway-bridge/internal/integration"
-	"github.com/brocaar/lora-gateway-bridge/internal/metadata"
-	"github.com/brocaar/loraserver/api/gw"
+	"github.com/brocaar/chirpstack-api/go/v3/gw"
+	"github.com/brocaar/chirpstack-gateway-bridge/internal/backend"
+	"github.com/brocaar/chirpstack-gateway-bridge/internal/config"
+	"github.com/brocaar/chirpstack-gateway-bridge/internal/integration"
+	"github.com/brocaar/chirpstack-gateway-bridge/internal/metadata"
 	"github.com/brocaar/lorawan"
 )
 
 var alwaysSubscribe []lorawan.EUI64
 
+// Setup configures the forwarder.
 func Setup(conf config.Config) error {
 	b := backend.GetBackend()
 	i := integration.GetIntegration()
@@ -33,57 +34,29 @@ func Setup(conf config.Config) error {
 			return errors.Wrap(err, "unmarshal gateway_id error")
 		}
 
-		if err := i.SubscribeGateway(gatewayID); err != nil {
+		if err := i.SetGatewaySubscription(true, gatewayID); err != nil {
 			return errors.Wrap(err, "subscribe gateway error")
 		}
 
 		alwaysSubscribe = append(alwaysSubscribe, gatewayID)
 	}
 
-	go onConnectedLoop()
-	go onDisconnectedLoop()
-
+	go gatewaySubscribeLoop()
 	go forwardUplinkFrameLoop()
 	go forwardGatewayStatsLoop()
 	go forwardDownlinkTxAckLoop()
 	go forwardDownlinkFrameLoop()
 	go forwardGatewayConfigurationLoop()
+	go forwardRawPacketForwarderCommandLoop()
+	go forwardRawPacketForwarderEventLoop()
 
 	return nil
 }
 
-func onConnectedLoop() {
-	for gatewayID := range backend.GetBackend().GetConnectChan() {
-		var found bool
-		for _, gwID := range alwaysSubscribe {
-			if gatewayID == gwID {
-				found = true
-			}
-		}
-		if found {
-			break
-		}
-
-		if err := integration.GetIntegration().SubscribeGateway(gatewayID); err != nil {
-			log.WithError(err).Error("subscribe gateway error")
-		}
-	}
-}
-
-func onDisconnectedLoop() {
-	for gatewayID := range backend.GetBackend().GetDisconnectChan() {
-		var found bool
-		for _, gwID := range alwaysSubscribe {
-			if gatewayID == gwID {
-				found = true
-			}
-		}
-		if found {
-			break
-		}
-
-		if err := integration.GetIntegration().UnsubscribeGateway(gatewayID); err != nil {
-			log.WithError(err).Error("unsubscribe gateway error")
+func gatewaySubscribeLoop() {
+	for event := range backend.GetBackend().GetSubscribeEventChan() {
+		if err := integration.GetIntegration().SetGatewaySubscription(event.Subscribe, event.GatewayID); err != nil {
+			log.WithError(err).Error("set gateway subscription error")
 		}
 	}
 }
@@ -149,6 +122,26 @@ func forwardDownlinkTxAckLoop() {
 	}
 }
 
+func forwardRawPacketForwarderEventLoop() {
+	for raw := range backend.GetBackend().GetRawPacketForwarderEventChan() {
+		go func(raw gw.RawPacketForwarderEvent) {
+			var gatewayID lorawan.EUI64
+			copy(gatewayID[:], raw.GatewayId)
+
+			var rawID uuid.UUID
+			copy(rawID[:], raw.RawId)
+
+			if err := integration.GetIntegration().PublishEvent(gatewayID, integration.EventRaw, rawID, &raw); err != nil {
+				log.WithError(err).WithFields(log.Fields{
+					"gateway_id": gatewayID,
+					"event_type": integration.EventRaw,
+					"raw_id":     rawID,
+				}).Error("publish event error")
+			}
+		}(raw)
+	}
+}
+
 func forwardDownlinkFrameLoop() {
 	for downlinkFrame := range integration.GetIntegration().GetDownlinkFrameChan() {
 		go func(downlinkFrame gw.DownlinkFrame) {
@@ -166,5 +159,15 @@ func forwardGatewayConfigurationLoop() {
 				log.WithError(err).Error("apply gateway-configuration error")
 			}
 		}(gatewayConfig)
+	}
+}
+
+func forwardRawPacketForwarderCommandLoop() {
+	for raw := range integration.GetIntegration().GetRawPacketForwarderChan() {
+		go func(raw gw.RawPacketForwarderCommand) {
+			if err := backend.GetBackend().RawPacketForwarderCommand(raw); err != nil {
+				log.WithError(err).Error("raw packet-forwarder command error")
+			}
+		}(raw)
 	}
 }

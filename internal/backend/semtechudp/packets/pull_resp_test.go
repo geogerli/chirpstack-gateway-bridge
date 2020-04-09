@@ -4,8 +4,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/brocaar/loraserver/api/common"
-	"github.com/brocaar/loraserver/api/gw"
+	"github.com/brocaar/chirpstack-api/go/v3/common"
+	"github.com/brocaar/chirpstack-api/go/v3/gw"
 	"github.com/golang/protobuf/ptypes"
 	"github.com/stretchr/testify/require"
 )
@@ -115,7 +115,8 @@ func TestGetPullRespPacket(t *testing.T) {
 					Modulation: common.Modulation_FSK,
 					ModulationInfo: &gw.DownlinkTXInfo_FskModulationInfo{
 						FskModulationInfo: &gw.FSKModulationInfo{
-							Bitrate: 50000,
+							Datarate:           50000,
+							FrequencyDeviation: 25000,
 						},
 					},
 					Board:   1,

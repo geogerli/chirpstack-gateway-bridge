@@ -14,10 +14,11 @@ import (
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 
-	"github.com/brocaar/lora-gateway-bridge/internal/backend/semtechudp/packets"
-	"github.com/brocaar/lora-gateway-bridge/internal/config"
-	"github.com/brocaar/lora-gateway-bridge/internal/filters"
-	"github.com/brocaar/loraserver/api/gw"
+	"github.com/brocaar/chirpstack-api/go/v3/gw"
+	"github.com/brocaar/chirpstack-gateway-bridge/internal/backend/events"
+	"github.com/brocaar/chirpstack-gateway-bridge/internal/backend/semtechudp/packets"
+	"github.com/brocaar/chirpstack-gateway-bridge/internal/config"
+	"github.com/brocaar/chirpstack-gateway-bridge/internal/filters"
 	"github.com/brocaar/lorawan"
 )
 
@@ -78,9 +79,8 @@ func NewBackend(conf config.Config) (*Backend, error) {
 		gatewayStatsChan:  make(chan gw.GatewayStats),
 		udpSendChan:       make(chan udpPacket),
 		gateways: gateways{
-			gateways:       make(map[lorawan.EUI64]gateway),
-			connectChan:    make(chan lorawan.EUI64),
-			disconnectChan: make(chan lorawan.EUI64),
+			gateways:           make(map[lorawan.EUI64]gateway),
+			subscribeEventChan: make(chan events.Subscribe),
 		},
 		fakeRxTime:   conf.Backend.SemtechUDP.FakeRxTime,
 		skipCRCCheck: conf.Backend.SemtechUDP.SkipCRCCheck,
@@ -109,8 +109,9 @@ func NewBackend(conf config.Config) (*Backend, error) {
 		}
 	}()
 
+	// Add the waitgroups before the goroutines or a race occurs with closing
+	b.wg.Add(2)
 	go func() {
-		b.wg.Add(1)
 		err := b.readPackets()
 		if !b.isClosed() {
 			log.WithError(err).Error("backend/semtechudp: read udp packets error")
@@ -119,7 +120,6 @@ func NewBackend(conf config.Config) (*Backend, error) {
 	}()
 
 	go func() {
-		b.wg.Add(1)
 		err := b.sendPackets()
 		if !b.isClosed() {
 			log.WithError(err).Error("backend/semtechudp: send udp packets error")
@@ -163,14 +163,15 @@ func (b *Backend) GetUplinkFrameChan() chan gw.UplinkFrame {
 	return b.uplinkFrameChan
 }
 
-// GetConnectChan returns the channel for received gateway connections.
-func (b *Backend) GetConnectChan() chan lorawan.EUI64 {
-	return b.gateways.connectChan
+// GetSubscribeEventChan return the (un)subscribe event channel.
+func (b *Backend) GetSubscribeEventChan() chan events.Subscribe {
+	return b.gateways.subscribeEventChan
 }
 
-// GetDisconnectChan returns the channel for disconnected gateway connections.
-func (b *Backend) GetDisconnectChan() chan lorawan.EUI64 {
-	return b.gateways.disconnectChan
+// GetRawPacketForwarderEventChan returns the raw packet-forwarder command channel.
+func (b *Backend) GetRawPacketForwarderEventChan() chan gw.RawPacketForwarderEvent {
+	// not provided by the Semtech packet-forwarder.
+	return nil
 }
 
 // SendDownlinkFrame sends the given downlink frame to the gateway.
@@ -236,6 +237,11 @@ func (b *Backend) ApplyConfiguration(config gw.GatewayConfiguration) error {
 	}
 
 	return b.applyConfiguration(*pfConfig, config)
+}
+
+// RawPacketForwarderCommand sends the given raw command to the packet-forwarder.
+func (b *Backend) RawPacketForwarderCommand(gw.RawPacketForwarderCommand) error {
+	return errors.New("raw packet-forwarder command not implemented by Semtech packet-forwarder")
 }
 
 func (b *Backend) applyConfiguration(pfConfig pfConfiguration, config gw.GatewayConfiguration) error {
