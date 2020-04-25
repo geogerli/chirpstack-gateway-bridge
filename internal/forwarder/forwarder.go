@@ -13,8 +13,6 @@ import (
 	"github.com/brocaar/lorawan"
 )
 
-var alwaysSubscribe []lorawan.EUI64
-
 // Setup configures the forwarder.
 func Setup(conf config.Config) error {
 	b := backend.GetBackend()
@@ -26,19 +24,6 @@ func Setup(conf config.Config) error {
 
 	if i == nil {
 		return errors.New("integration is not set")
-	}
-
-	for _, c := range conf.Backend.SemtechUDP.Configuration {
-		var gatewayID lorawan.EUI64
-		if err := gatewayID.UnmarshalText([]byte(c.GatewayID)); err != nil {
-			return errors.Wrap(err, "unmarshal gateway_id error")
-		}
-
-		if err := i.SetGatewaySubscription(true, gatewayID); err != nil {
-			return errors.Wrap(err, "subscribe gateway error")
-		}
-
-		alwaysSubscribe = append(alwaysSubscribe, gatewayID)
 	}
 
 	go gatewaySubscribeLoop()
@@ -89,7 +74,12 @@ func forwardGatewayStatsLoop() {
 			copy(statsID[:], stats.StatsId)
 
 			// add meta-data to stats
-			stats.MetaData = metadata.Get()
+			if stats.MetaData == nil {
+				stats.MetaData = make(map[string]string)
+			}
+			for k, v := range metadata.Get() {
+				stats.MetaData[k] = v
+			}
 
 			if err := integration.GetIntegration().PublishEvent(gatewayID, integration.EventStats, statsID, &stats); err != nil {
 				log.WithError(err).WithFields(log.Fields{
